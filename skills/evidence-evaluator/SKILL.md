@@ -308,7 +308,7 @@ NARRATIVE SUMMARY
 
 ## Running Evaluations
 
-To run the full PRD validation suite, see `references/eval_framework.md`.
+To run the full validation suite, see `references/eval_framework.md`.
 
 Acceptance test cases (T1–T8) are defined there with expected outputs and pass criteria.
 

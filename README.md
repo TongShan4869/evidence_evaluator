@@ -2,7 +2,7 @@
 
 **Automated structured evidence quality evaluation for clinical and biomedical research papers.**
 
-Built on the [SciSpark](https://scispark.ai) EvidenceScore pipeline — a 6-stage agentic system that mirrors the reasoning of a trained Evidence-Based Medicine (EBM) reviewer. Drop in any paper; get a comprehensive, auditable evidence report back.
+Built on the [SciSpark](https://scispark.ai) Evidence Evaluator pipeline — a 6-stage agentic system that mirrors the reasoning of a trained Evidence-Based Medicine (EBM) reviewer. Drop in any paper; get a comprehensive, auditable evidence report back.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)

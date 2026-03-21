@@ -1,6 +1,6 @@
 # Evaluation Framework
 
-Comprehensive evaluation suite for the Evidence Evaluator skill, based on the SciSpark EvidenceScore PRD v2 validation design.
+Comprehensive evaluation suite for the Evidence Evaluator skill, based on the SciSpark Evidence Evaluator validation design.
 
 ---
 
