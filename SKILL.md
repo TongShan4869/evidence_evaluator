@@ -148,6 +148,8 @@ Read `references/stage_5_report.md`.
 
 ## Output Format
 
+Default output is plain text (structured sections + narrative). Pass `output_format: markdown` to also receive a fully-rendered `.md` file. See `references/stage_5_report.md → Part 5` for the full markdown template.
+
 ```
 ══════════════════════════════════════════════════════════
 EVIDENCE EVALUATION REPORT
