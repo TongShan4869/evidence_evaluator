@@ -56,6 +56,7 @@ Agentic iterative retrieval (up to 5 rounds). Start from Stage 1's `pico_search_
 | Sensitivity | ≥ 0.85 (high-stakes) | ≥ 0.95 | — |
 | Specificity | ≥ 0.70 | ≥ 0.90 | — |
 | LR+ | > 5 | > 10 | LR+ < 2 → −1 |
+| LR− | < 0.2 | < 0.1 | — |
 
 Additional diagnostic rules:
 - Case-control design (not consecutive enrollment) → −1 (spectrum bias)
@@ -89,6 +90,8 @@ Pure computation. No LLM. Calculates objective, reproducible statistical metrics
 If LTFU_count > FI → apply −2 grade (hard rule, cannot be deduplicated or overridden)
 ```
 This means: the number of patients lost to follow-up exceeds the number of outcome switches that would make the result non-significant. The finding is fragile in the face of its own dropout.
+
+**Floor interaction:** LTFU > FI can penetrate TO the boundary floor but not below it. For Grade 5 studies, the floor is 3 — LTFU can reduce the score to 3 but not below. When LTFU triggers, do not re-penalize for near-threshold P-values or low FI (the −2 already accounts for these).
 
 ### 3. Fragility Quotient (FQ)
 ```

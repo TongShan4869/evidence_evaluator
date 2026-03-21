@@ -57,7 +57,12 @@ Judgment levels: `low | some_concerns | high | critical`
 | Plausible confounding | Bias direction favors null but result still significant | +1 grade |
 
 **Upgrade cap:** Maximum +1 total even if multiple factors met.
-**Grade ceiling:** Grade 3 → max 4; Grade 2 → max 3.
+**Grade ceiling:** Grade 3 → max 4; Grade 2 → max 3. Score 5 is reserved for Grade 5 starting studies only.
+
+**When upgrades do NOT trigger:**
+- **Large effect size:** Does NOT trigger if the CI is wide (imprecise estimate) or N < 30 (small sample inflates effect).
+- **Dose-response gradient:** Does NOT trigger if only 2 dose groups (need ≥ 3) or if the dose-response curve is J-shaped or U-shaped (non-monotonic).
+- **Plausible confounding:** Does NOT trigger if the confounding direction is unclear, or if the claim is based solely on authors' assertion without supporting data (unadjusted crude effect must be smaller than adjusted effect).
 
 ---
 

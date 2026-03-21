@@ -98,8 +98,9 @@ r = compute_suggested_score(
 # With full stage 3: 5 + (-2) + (-1) + (-0.5) = 1.5 → round to 2
 # LTFU pierces floor → final = max(1, min(5, 2)) = 2
 check("T2_ltfu_triggered", s3_t2["metrics"]["ltfu_fi_rule"]["triggered"], True)
-check("T2_score", r["score"], 2)
-check("T2_ltfu_pierces_floor", r["score"] < 3, True)  # below normal floor of 3
+# Per framework: LTFU pierces TO floor 3 for Grade 5, not below it
+check("T2_score", r["score"], 3)
+check("T2_ltfu_at_floor", r["score"] == 3, True)  # LTFU pierces to floor 3
 
 # ── T3: Phase 0/I → score locked 1–2 ─────────────────────────
 print("\n[T3: Phase 0/I → score locked 1-2]")
@@ -249,7 +250,7 @@ r = compute_suggested_score(
 # 5 + (-1.5) + (-1) = 2.5 → rounds to 2, but floor is 3
 check("Floor_grade5_min3", r["score"], 3)
 
-print("\n[Boundary matrix: LTFU pierces floor]")
+print("\n[Boundary matrix: LTFU pierces TO floor]")
 r = compute_suggested_score(
     initial_grade=5,
     stage3_output=s3_t2,  # LTFU triggered, total_delta = -3.5
@@ -258,9 +259,9 @@ r = compute_suggested_score(
     ]},
     study_type="RCT_intervention",
 )
-# 5 + (-3.5) + (-1) = 0.5 → rounds to 0, but min is 1
-check("LTFU_pierces_below_floor", r["score"] < 3, True)
-check("LTFU_min_1", r["score"] >= 1, True)
+# Per framework: LTFU pierces TO floor 3 for Grade 5 — not below
+check("LTFU_at_floor_3", r["score"], 3)
+check("LTFU_not_below_floor", r["score"] >= 3, True)
 
 print("\n[Boundary matrix: Grade 1 is fixed]")
 r = compute_suggested_score(
@@ -464,6 +465,170 @@ check("Minimal_score", r["score"], 3)
 
 r = compute_suggested_score(initial_grade=3, stage3_output=None, stage4_output=None)
 check("None_stages_score", r["score"], 3)
+
+# ══════════════════════════════════════════════════════════════
+# SCORE 5 PREREQUISITES (Unified Scoring Matrix)
+# ══════════════════════════════════════════════════════════════
+
+print("\n[Score 5: all prerequisites met → 5]")
+r = compute_suggested_score(
+    initial_grade=5,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 20, "delta": 0.5, "interpretation": "robust"},
+        "ltfu_fi_rule": {"triggered": False, "delta": 0, "ltfu": 5, "fi": 20},
+        "fragility_quotient": {"fq": 0.02, "below_threshold": False, "delta": 0},
+        "nnt": {"nnt": 15, "direction": "benefit", "delta": 0},
+        "posthoc_power": {"power": 0.95, "adequate": True, "delta": 0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": [
+        {"domain": "randomization", "judgment": "low", "delta": 0},
+    ]},
+    study_type="RCT_intervention",
+)
+check("Score5_all_met", r["score"], 5)
+
+print("\n[Score 5: FI ≤ 10 blocks score 5]")
+r = compute_suggested_score(
+    initial_grade=5,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 8, "delta": 0, "interpretation": "moderate"},
+        "ltfu_fi_rule": {"triggered": False, "delta": 0, "ltfu": 2, "fi": 8},
+        "fragility_quotient": {"fq": 0.02, "below_threshold": False, "delta": 0},
+        "nnt": {"nnt": 15, "direction": "benefit", "delta": 0},
+        "posthoc_power": {"power": 0.95, "adequate": True, "delta": 0},
+    }, "total_delta": 0},
+    stage4_output={"domains": [
+        {"domain": "randomization", "judgment": "low", "delta": 0},
+    ]},
+    study_type="RCT_intervention",
+)
+check("Score5_fi_blocks", r["score"], 4)
+
+print("\n[Score 5: power < 0.8 blocks score 5]")
+r = compute_suggested_score(
+    initial_grade=5,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 20, "delta": 0.5, "interpretation": "robust"},
+        "ltfu_fi_rule": {"triggered": False, "delta": 0, "ltfu": 2, "fi": 20},
+        "fragility_quotient": {"fq": 0.02, "below_threshold": False, "delta": 0},
+        "nnt": {"nnt": 15, "direction": "benefit", "delta": 0},
+        "posthoc_power": {"power": 0.75, "adequate": False, "delta": -1},
+    }, "total_delta": -0.5},
+    stage4_output={"domains": [
+        {"domain": "randomization", "judgment": "low", "delta": 0},
+    ]},
+    study_type="RCT_intervention",
+)
+check("Score5_power_blocks", r["score"], 4)
+
+print("\n[Score 5: high bias blocks score 5]")
+r = compute_suggested_score(
+    initial_grade=5,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 20, "delta": 0.5, "interpretation": "robust"},
+        "ltfu_fi_rule": {"triggered": False, "delta": 0, "ltfu": 2, "fi": 20},
+        "fragility_quotient": {"fq": 0.02, "below_threshold": False, "delta": 0},
+        "nnt": {"nnt": 15, "direction": "benefit", "delta": 0},
+        "posthoc_power": {"power": 0.95, "adequate": True, "delta": 0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": [
+        {"domain": "randomization", "judgment": "high", "delta": -1},
+    ]},
+    study_type="RCT_intervention",
+)
+check("Score5_bias_blocks", r["score"], 4)
+
+print("\n[Score 5: surrogate endpoint blocks score 5]")
+r = compute_suggested_score(
+    initial_grade=5,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 20, "delta": 0.5, "interpretation": "robust"},
+        "ltfu_fi_rule": {"triggered": False, "delta": 0, "ltfu": 2, "fi": 20},
+        "fragility_quotient": {"fq": 0.02, "below_threshold": False, "delta": 0},
+        "nnt": {"nnt": 15, "direction": "benefit", "delta": 0},
+        "posthoc_power": {"power": 0.95, "adequate": True, "delta": 0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": [
+        {"domain": "randomization", "judgment": "low", "delta": 0},
+    ], "surrogate_endpoint_delta": -1},
+    study_type="RCT_intervention",
+)
+check("Score5_surrogate_blocks", r["score"], 4)
+
+# ══════════════════════════════════════════════════════════════
+# DIAGNOSTIC-SPECIFIC UPGRADES
+# ══════════════════════════════════════════════════════════════
+
+print("\n[Diagnostic upgrade: Grade 3 + DOR > 20 narrow CI → 4]")
+r = compute_suggested_score(
+    initial_grade=3,
+    stage3_output={"skipped": False, "metrics": {
+        "dor": {"dor": 25.0, "ci_crosses_1": False, "delta": 0.5,
+                "interpretation": "high", "ci_lower": 10.0, "ci_upper": 60.0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": []},
+    study_type="diagnostic",
+)
+check("Diag_grade3_upgrade_to_4", r["score"], 4)
+
+print("\n[Diagnostic upgrade: Grade 2 + DOR > 20 + AUC ≥ 0.90 → 3]")
+r = compute_suggested_score(
+    initial_grade=2,
+    stage3_output={"skipped": False, "metrics": {
+        "dor": {"dor": 30.0, "ci_crosses_1": False, "delta": 0.5,
+                "interpretation": "high", "ci_lower": 12.0, "ci_upper": 75.0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": []},
+    stage2_output={"auc": 0.92},
+    study_type="diagnostic",
+)
+check("Diag_grade2_upgrade_to_3", r["score"], 3)
+
+print("\n[Diagnostic upgrade: Grade 2 + DOR > 20 but AUC < 0.90 → no upgrade]")
+r = compute_suggested_score(
+    initial_grade=2,
+    stage3_output={"skipped": False, "metrics": {
+        "dor": {"dor": 30.0, "ci_crosses_1": False, "delta": 0.5,
+                "interpretation": "high", "ci_lower": 12.0, "ci_upper": 75.0},
+    }, "total_delta": 0.5},
+    stage4_output={"domains": []},
+    stage2_output={"auc": 0.80},
+    study_type="diagnostic",
+)
+check("Diag_grade2_no_upgrade_low_auc", r["score"], 2)
+
+# ══════════════════════════════════════════════════════════════
+# LTFU FLOOR PER GRADE
+# ══════════════════════════════════════════════════════════════
+
+print("\n[LTFU floor: Grade 4 LTFU pierces to 2]")
+r = compute_suggested_score(
+    initial_grade=4,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 1, "delta": -1, "interpretation": "extreme_fragile"},
+        "ltfu_fi_rule": {"triggered": True, "delta": -2, "ltfu": 5, "fi": 1},
+        "fragility_quotient": {"fq": 0.001, "below_threshold": True, "delta": -0.5},
+        "nnt": {"nnt": 10, "direction": "benefit", "delta": 0},
+    }, "total_delta": -3.5},
+    stage4_output={"domains": []},
+    study_type="RCT_intervention",
+)
+# 4 + (-3.5) = 0.5 → rounds to 0, LTFU floor for Grade 4 = 2
+check("LTFU_grade4_floor_2", r["score"], 2)
+
+print("\n[LTFU floor: Grade 3 LTFU pierces to 2]")
+r = compute_suggested_score(
+    initial_grade=3,
+    stage3_output={"skipped": False, "metrics": {
+        "fragility_index": {"fi": 1, "delta": -1, "interpretation": "extreme_fragile"},
+        "ltfu_fi_rule": {"triggered": True, "delta": -2, "ltfu": 5, "fi": 1},
+        "fragility_quotient": {"fq": 0.001, "below_threshold": True, "delta": -0.5},
+        "nnt": {"nnt": 10, "direction": "benefit", "delta": 0},
+    }, "total_delta": -3.5},
+    stage4_output={"domains": []},
+    study_type="RCT_intervention",
+)
+check("LTFU_grade3_floor_2", r["score"], 2)
 
 # ── Summary ──────────────────────────────────────────────────
 print("\n" + "=" * 60)

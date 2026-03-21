@@ -136,6 +136,6 @@ Always use **Tier 1** first: abstract + methods + conclusion. If an agent pass r
 
 ## Special Rules
 
-- **Phase 0/I:** Auto-lock to Grade 2. Skip MCID and FI/NNT in later stages. Stage 4 runs only 2 RoB 2.0 domains. Score range locked 1–2.
-- **Retracted paper:** Set `excluded: true`. No score. UI: *"Removed due to data integrity concerns."*
+- **Phase 0/I:** Auto-lock to Grade 2, fixed score of 2. Phase 2 MCID search not triggered. Phase 3 FI/NNT skipped. Stage 4 runs only randomization + selective reporting domains of RoB 2.0. Final score fixed between 1–2; cannot be upgraded to 3 under any circumstance. Output must include: *"This is a Phase 0/I safety trial. Score reflects study quality only."*
+- **Retracted paper / data fabrication / serious COI:** Set `excluded: true`. No score. All sections suppressed. UI: *"Removed due to data integrity concerns."* This applies to confirmed retractions, significant data fabrication, or serious undisclosed conflicts of interest discovered at any stage.
 - **Confidence < 0.7:** Flag `human_review_flag: true`. Continue pipeline but mark provisional.

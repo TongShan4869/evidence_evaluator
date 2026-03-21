@@ -21,7 +21,8 @@ SCORE_LABELS = {
 }
 
 # Boundary matrix: starting_grade → (base, max, min)
-# LTFU hard rule can pierce the floor
+# LTFU hard rule can pierce TO the floor (not below it) for Grade 5.
+# Per framework: "Floor protected at 3; only LTFU > FI can penetrate to 3"
 BOUNDARY_MATRIX = {
     5: (5, 5, 3),
     4: (4, 4, 2),
@@ -30,8 +31,36 @@ BOUNDARY_MATRIX = {
     1: (1, 1, 1),
 }
 
+# LTFU-pierced floors per starting grade (LTFU can reach floor but not below)
+LTFU_FLOOR = {
+    5: 3,  # "only LTFU > FI can penetrate to 3"
+    4: 2,
+    3: 2,
+    2: 1,
+    1: 1,
+}
+
+# Diagnostic-specific boundary matrix
+DIAGNOSTIC_BOUNDARY_MATRIX = {
+    5: (5, 5, 3),  # Same as general
+    4: (4, 4, 2),  # Severe QUADAS-2 can reduce to 2
+    3: (3, 4, 2),  # DOR > 20 narrow CI can upgrade to 4
+    2: (2, 3, 1),  # DOR > 20 AND AUC ≥ 0.90 may upgrade to 3
+}
+
 QUADAS2_CAP = -2
 GRADE_UPGRADE_CAP = 1
+
+# Unified scoring matrix prerequisites (Score 5 requires all of these)
+SCORE_5_PREREQUISITES = {
+    "initial_grade": 5,
+    "fi_gt_10": True,
+    "fi_gt_ltfu": True,
+    "p_lt_0001": True,   # P < 0.001
+    "power_gte_08": True,  # Power ≥ 0.8
+    "low_bias": True,
+    "hard_endpoints": True,  # not surrogate
+}
 
 
 # ---------------------------------------------------------------------------
@@ -293,23 +322,95 @@ def compute_suggested_score(
 
     # --- Boundary enforcement ---
     raw_score = running
-    base, ceiling, floor = BOUNDARY_MATRIX.get(initial_grade, (initial_grade, 5, 1))
 
-    # LTFU hard rule can pierce floor
+    # Select boundary matrix (diagnostic has its own)
+    if study_type == "diagnostic":
+        bmatrix = DIAGNOSTIC_BOUNDARY_MATRIX
+    else:
+        bmatrix = BOUNDARY_MATRIX
+    base, ceiling, floor = bmatrix.get(initial_grade, (initial_grade, 5, 1))
+
+    # LTFU hard rule can pierce TO floor (not below it)
     ltfu_triggered = False
     if not s3_output.get("skipped", False):
         metrics = s3_output.get("metrics", {})
         ltfu_triggered = metrics.get("ltfu_fi_rule", {}).get("triggered", False)
 
     if ltfu_triggered:
-        # Floor is 1 (LTFU pierces)
-        final = max(1, min(ceiling, round(running)))
+        # LTFU pierces to the LTFU floor (same as normal floor per framework)
+        ltfu_floor = LTFU_FLOOR.get(initial_grade, 1)
+        final = max(ltfu_floor, min(ceiling, round(running)))
     else:
         final = max(floor, min(ceiling, round(running)))
+
+    # Diagnostic-specific upgrades (applied after boundary)
+    if study_type == "diagnostic" and not s3_output.get("skipped", False):
+        dor_metrics = s3_output.get("metrics", {}).get("dor", {})
+        dor_val = dor_metrics.get("dor", 0)
+        ci_crosses = dor_metrics.get("ci_crosses_1", True)
+        auc = (stage2_output or {}).get("auc", 0)
+
+        if initial_grade == 3 and dor_val > 20 and not ci_crosses and final < 4:
+            final = min(4, final + 1)
+            score_path.append({
+                "step": "Diagnostic upgrade",
+                "detail": f"DOR > 20 ({dor_val:.1f}) with narrow CI: Grade 3 → 4",
+                "delta": 1,
+            })
+        elif initial_grade == 2 and dor_val > 20 and not ci_crosses and auc >= 0.90 and final < 3:
+            final = min(3, final + 1)
+            score_path.append({
+                "step": "Diagnostic upgrade",
+                "detail": f"DOR > 20 ({dor_val:.1f}) AND AUC ≥ 0.90 ({auc}): Grade 2 → 3",
+                "delta": 1,
+            })
 
     # Phase 0/I: lock to 1–2
     if phase_0_1:
         final = max(1, min(2, final))
+
+    # --- Unified scoring matrix validation ---
+    # Score 5 requires specific prerequisites beyond just boundary math
+    if final == 5:
+        s3_metrics = s3_output.get("metrics", {}) if not s3_output.get("skipped", False) else {}
+        fi_val = s3_metrics.get("fragility_index", {}).get("fi", 0)
+        ltfu_val = s3_metrics.get("ltfu_fi_rule", {}).get("ltfu", 0)
+        power_val = s3_metrics.get("posthoc_power", {}).get("power", 1.0)
+        power_adequate = s3_metrics.get("posthoc_power", {}).get("adequate", True)
+        p_value = stage1_p_value = None
+        # Extract p_value if available from stage1 (passed through stage3)
+        has_surrogate = (stage4_output or {}).get("surrogate_endpoint_delta", 0) < 0
+
+        # Check prerequisites: FI > 10, FI > LTFU, Power ≥ 0.8, no surrogate
+        score5_blocked = False
+        score5_reasons = []
+        if fi_val <= 10:
+            score5_blocked = True
+            score5_reasons.append(f"FI={fi_val} (must be > 10)")
+        if fi_val <= ltfu_val:
+            score5_blocked = True
+            score5_reasons.append(f"FI ({fi_val}) ≤ LTFU ({ltfu_val})")
+        if "posthoc_power" in s3_metrics and not power_adequate:
+            score5_blocked = True
+            score5_reasons.append(f"Power={power_val:.1%} (must be ≥ 80%)")
+        if has_surrogate:
+            score5_blocked = True
+            score5_reasons.append("Surrogate endpoint used")
+
+        # Check bias — any high/critical domain blocks Score 5
+        for domain in (stage4_output or {}).get("domains", []):
+            if domain.get("judgment") in ("high", "critical"):
+                score5_blocked = True
+                score5_reasons.append(f"Bias domain '{domain.get('domain')}' = {domain.get('judgment')}")
+                break
+
+        if score5_blocked:
+            final = 4
+            score_path.append({
+                "step": "Score 5 prerequisites",
+                "detail": "Downgraded to 4: " + "; ".join(score5_reasons),
+                "delta": -1,
+            })
 
     boundary_detail = []
     if round(running) > ceiling:
@@ -317,11 +418,13 @@ def compute_suggested_score(
     if not ltfu_triggered and round(running) < floor:
         boundary_detail.append(f"floor {floor} applied (raw {running:.1f})")
     if ltfu_triggered and round(running) < floor:
-        boundary_detail.append(f"LTFU hard rule pierced floor {floor} (raw {running:.1f})")
+        ltfu_floor = LTFU_FLOOR.get(initial_grade, 1)
+        boundary_detail.append(f"LTFU hard rule pierced to floor {ltfu_floor} (raw {running:.1f})")
     if phase_0_1:
         boundary_detail.append("Phase 0/I: score locked to 1–2")
 
-    score_path.append({
+    # Insert boundary step before any diagnostic upgrade or score5 steps
+    score_path.insert(-1 if any(s["step"] in ("Diagnostic upgrade", "Score 5 prerequisites") for s in score_path) else len(score_path), {
         "step": "Boundary enforcement",
         "detail": "; ".join(boundary_detail) if boundary_detail else "none",
         "delta": final - raw_score,
