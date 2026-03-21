@@ -117,6 +117,14 @@ Evaluate: effect vs. MCID, N vs. domain standard, NNT vs. domain threshold.
 - For MCID searches: use PubMed E-utilities search (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax=10`) then fetch results. Do NOT scrape PubMed HTML pages.
 - If a journal blocks direct access (403), fall back to PubMed/CrossRef for abstract and metadata. Most evaluations can be completed from abstract + methods data alone (Tier 1).
 
+**MCID selection rules (critical for reproducibility):**
+The MCID value directly affects post-hoc power and the effect-vs-MCID comparison. To ensure consistent results across runs:
+
+1. **Use the observed ARR as the MCID input for post-hoc power when no Tier 1/2 MCID exists.** If no disease-specific MCID is found in COMET/OMERACT (Tier 1) or systematic reviews (Tier 2), and you are using a Tier 3 guideline or Tier 4 proxy, then use the study's own observed ARR as the MCID for power computation. This avoids the power calculation being sensitive to which guideline the agent happens to find. Log the actual Tier 3/4 value separately for the effect-vs-MCID comparison.
+2. **For binary outcomes, express MCID as ARR (not HR).** HR depends on follow-up duration and baseline hazard, making it ambiguous. ARR is directly computable from the 2×2 table and feeds cleanly into the power formula.
+3. **Document the MCID derivation explicitly.** In the report, state: the MCID value, its unit (ARR/SMD/MD), the source (with citation), the tier, and how it was converted if applicable. This makes the score path auditable.
+4. **If the observed effect exceeds the MCID, power is not a concern.** When the study detected an effect larger than the MCID, the study was by definition adequately powered for the MCID. In this case, set `power_adequate = True` and skip the formal power computation. This prevents edge cases where a conservative MCID estimate triggers a spurious power deduction on a clearly positive trial.
+
 ---
 
 ### Stage 3: Deterministic Math Audit
