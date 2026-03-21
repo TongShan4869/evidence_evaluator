@@ -9,7 +9,7 @@ Validates:
 
 import math
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "skills", "evidence-evaluator"))
 
 from pipeline.stage3_math import run_stage3
 from pipeline.stage5_report import (

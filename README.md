@@ -10,6 +10,25 @@ Built on the [SciSpark](https://scispark.ai) EvidenceScore pipeline — a 6-stag
 
 ---
 
+## Installation
+
+```bash
+# Install via npx (Claude Code, Cursor, Codex CLI, Gemini CLI)
+npx skills add SciSpark-ai/evidence_evaluator
+
+# Or clone directly
+git clone https://github.com/SciSpark-ai/evidence_evaluator.git
+```
+
+After installation, the skill is automatically available. Ask your AI agent to *"evaluate this paper"* and paste an abstract, DOI, or PMID.
+
+**Python dependencies** (required for Stage 3 math audit):
+```bash
+python3 -m pip install scipy statsmodels numpy
+```
+
+---
+
 ## What It Does
 
 Given a paper (PDF, pasted text, DOI, or PMID), the pipeline runs six sequential stages and produces:
@@ -132,18 +151,22 @@ evidence_report_[first_author]_[year]_[pmid].md
 
 ```
 evidence_evaluator/
-├── SKILL.md                              ← Agent skill entry point
-├── pipeline/
-│   ├── stage3_math.py                    ← Stage 3: deterministic math audit module
-│   └── stage5_report.py                  ← Stage 5: score rule engine + report assembly
-├── references/
-│   ├── stages_0_1.md                     ← Stage 0: routing · Stage 1: extraction
-│   ├── stages_2_3.md                     ← Stage 2: MCID search · Stage 3: math audit
-│   ├── stage_4.md                        ← Stage 4: bias risk (RoB 2.0 / QUADAS-2 / GRADE)
-│   ├── stage_5_report.md                 ← Stage 5: report synthesis + markdown export
-│   ├── formulas.md                       ← All formulas (FI, FQ, NNT, DOR, power)
-│   └── eval_framework.md                 ← Acceptance tests T1–T8 + Experiments 3A–3F
-└── tests/
+├── .claude-plugin/
+│   └── plugin.json                       ← Plugin manifest for skill marketplace
+├── skills/
+│   └── evidence-evaluator/
+│       ├── SKILL.md                      ← Agent skill entry point
+│       ├── pipeline/
+│       │   ├── stage3_math.py            ← Stage 3: deterministic math audit module
+│       │   └── stage5_report.py          ← Stage 5: score rule engine + report assembly
+│       └── references/
+│           ├── stages_0_1.md             ← Stage 0: routing · Stage 1: extraction
+│           ├── stages_2_3.md             ← Stage 2: MCID search · Stage 3: math audit
+│           ├── stage_4.md                ← Stage 4: bias risk (RoB 2.0 / QUADAS-2 / GRADE)
+│           ├── stage_5_report.md         ← Stage 5: report synthesis + markdown export
+│           ├── formulas.md               ← All formulas (FI, FQ, NNT, DOR, power)
+│           └── eval_framework.md         ← Acceptance tests T1–T8 + Experiments 3A–3F
+└── tests/                                ← Development only (not part of skill package)
     ├── acceptance_tests_T1_T8.py         ← 8 scenario tests · all pass ✅
     ├── experiment_3B_math_unit_tests.py  ← Stage 3 math unit tests · 21/21 correct ✅
     ├── test_stage3_math.py              ← Stage 3 module tests · 147/147 passing ✅

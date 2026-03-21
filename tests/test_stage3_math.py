@@ -7,7 +7,7 @@ used in acceptance_tests_T1_T8.py and experiment_3B_math_unit_tests.py.
 
 import math
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "skills", "evidence-evaluator"))
 
 from pipeline.stage3_math import (
     compute_fragility_index,

@@ -1,0 +1,11 @@
+{
+  "name": "evidence-evaluator",
+  "description": "Automated structured evidence evaluation of clinical/biomedical research papers. 6-stage agentic pipeline: study type routing, variable extraction, MCID search, deterministic math audit (Fragility Index, NNT, post-hoc power), bias risk assessment (RoB 2.0 / QUADAS-2 / GRADE), and report synthesis.",
+  "version": "1.0.0",
+  "author": {
+    "name": "SciSpark"
+  },
+  "homepage": "https://scispark.ai",
+  "repository": "https://github.com/SciSpark-ai/evidence_evaluator",
+  "license": "MIT"
+}

@@ -4,59 +4,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Evidence Evaluator is a 6-stage agentic pipeline (SciSpark EvidenceScore v2) that produces structured evidence quality reports for clinical/biomedical research papers. It is an **LLM skill** (defined in `SKILL.md`), not a standalone application — the pipeline is executed by an AI agent following the stage reference documents.
+Evidence Evaluator is an installable Claude Code plugin containing a 6-stage agentic pipeline that produces structured evidence quality reports for clinical/biomedical research papers. Distributed as an open-source skill via `npx skills add SciSpark-ai/evidence_evaluator`.
+
+## Repo Structure
+
+```
+.claude-plugin/plugin.json          ← Plugin manifest
+skills/evidence-evaluator/
+  SKILL.md                          ← Skill entry point
+  pipeline/stage3_math.py           ← Stage 3: deterministic math (no LLM)
+  pipeline/stage5_report.py         ← Stage 5: score engine + report assembly
+  references/                       ← Stage specs, formulas, eval framework
+tests/                              ← Development only (not part of skill package)
+```
 
 ## Running Tests
 
 ```bash
-# Dependencies
 pip install scipy statsmodels numpy
 
-# Acceptance tests (T1–T8): routing logic, deduction rules, special cases
-python tests/acceptance_tests_T1_T8.py
-
-# Stage 3 math unit tests (FI, FQ, NNT, DOR, post-hoc power) — 21 cases
-python tests/experiment_3B_math_unit_tests.py
-
-# Stage 3 module tests — 147 tests: core metrics, edge cases, acceptance
-# scenarios, study type routing, de-duplication, test-retest, total delta
-# end-to-end, and published FI validation (Walsh et al. 2014)
-python tests/test_stage3_math.py
-
-# Stage 5 module tests — 60 tests: score rule engine, boundary matrix,
-# de-duplication caps (QUADAS-2, GRADE), LTFU floor pierce, phase_0_1 lock,
-# report assembly, exclusion handling, special case formatting
-python tests/test_stage5_report.py
+python tests/acceptance_tests_T1_T8.py          # 8/8 pass
+python tests/experiment_3B_math_unit_tests.py    # 21/21 pass
+python tests/test_stage3_math.py                 # 147/147 pass
+python tests/test_stage5_report.py               # 60/60 pass
 ```
 
-Tests use a custom pass/fail counter (not pytest). They print results to stdout with checkmark/cross indicators.
+Tests use a custom pass/fail counter (not pytest). They print results to stdout.
 
 ## Architecture
 
-The repo is a **skill specification + reference library + Stage 3 & 5 implementations**:
-
-- `SKILL.md` — Entry point. Defines the full pipeline, stage execution order, de-duplication rules, and output format. This is what the agent reads to run an evaluation.
-- `pipeline/stage3_math.py` — **Implemented.** Deterministic math audit module (no LLM). Exports `run_stage3()` as the top-level entry point, plus individual functions: `compute_fragility_index`, `compute_ltfu_fi_rule`, `compute_fragility_quotient`, `compute_nnt`, `compute_nnt_threshold_delta`, `compute_posthoc_power_binary`, `compute_posthoc_power_continuous`, `compute_dor`, `deduplicate_statistical_stability`. Routes by study type (diagnostic → DOR only; observational → no power; phase_0_1 → skip).
-- `pipeline/stage5_report.py` — **Implemented.** Score rule engine + structured report assembly. Exports `compute_suggested_score()` (collects deltas, applies cross-stage de-duplication, enforces boundary matrix with LTFU floor pierce and phase_0_1 lock) and `assemble_report()` (formats all stage outputs into plain-text report with exclusion/disclaimer handling). Also exports `deduplicate_stage4_deltas()` for QUADAS-2 cap, GRADE upgrade cap, and case-control overlap de-duplication.
-- `references/` — Stage-specific specifications the agent reads before executing each stage:
-  - `stages_0_1.md` — Stage 0 (study type routing) + Stage 1 (variable extraction with 3× CoT majority vote)
-  - `stages_2_3.md` — Stage 2 (agentic MCID search, up to 5 rounds) + Stage 3 (deterministic math audit)
-  - `stage_4.md` — Stage 4 (bias risk: RoB 2.0 / QUADAS-2 / GRADE, selected by study type)
-  - `stage_5_report.md` — Stage 5 (report synthesis, narrative, optional score, optional markdown export)
-  - `formulas.md` — All math formulas (Fragility Index, FQ, NNT/NNH, DOR, post-hoc power)
-  - `eval_framework.md` — Validation experiments (3A–3F) and acceptance test definitions (T1–T8)
-- `tests/` — Python test scripts that validate the deterministic math (Stage 3) and pipeline routing logic
+- `skills/evidence-evaluator/SKILL.md` — Skill entry point. Defines pipeline, stage execution order, output format, and Python code usage.
+- `skills/evidence-evaluator/pipeline/stage3_math.py` — Deterministic math audit. Exports `run_stage3()`, `compute_fragility_index`, `compute_nnt`, `compute_dor`, etc. Routes by study type.
+- `skills/evidence-evaluator/pipeline/stage5_report.py` — Score rule engine + report assembly. Exports `compute_suggested_score()`, `assemble_report()`, `deduplicate_stage4_deltas()`.
+- `skills/evidence-evaluator/references/` — Stage specs the agent reads before executing each stage.
+- `tests/` — Dev-only validation tests (not part of installed skill).
 
 ## Key Domain Rules
 
-- **LTFU > FI hard rule**: If lost-to-follow-up exceeds Fragility Index → −2 grades, no exceptions, never deduplicated with other rules
-- **De-duplication**: {power < 0.80, N < domain standard, NNT > threshold} share one statistical stability dimension — only the most severe deduction applies
-- **Study type routing**: `phase_0_1` skips Stages 2+3 and locks score to 1–2; `diagnostic` uses QUADAS-2 instead of RoB 2.0 and computes DOR instead of FI/NNT
-- **Score disclaimer**: The 1–5 score is heuristic, pending expert calibration — always display the disclaimer
+- **LTFU > FI hard rule**: LTFU exceeds FI → −2 grades, no exceptions, never deduplicated
+- **De-duplication**: {power < 0.80, N < domain standard, NNT > threshold} → only most severe applies
+- **Study type routing**: `phase_0_1` skips Stages 2+3, locks score 1–2; `diagnostic` uses QUADAS-2 + DOR
+- **Score disclaimer**: 1–5 score is heuristic, pending expert calibration — always display disclaimer
 
 ## Tech Context
 
-- Stage 3 math is deterministic Python (scipy, statsmodels, numpy) — no LLM involvement
-- Stage 5 score engine and report assembly are deterministic Python — no LLM involvement (the narrative summary is an agent task)
-- Stages 0, 1, 2, 4 are agent reasoning tasks — the agent follows reference docs, no Python modules needed
-- Tiered context strategy: abstract + methods + conclusion first (Tier 1); only escalate to full text on `needs_full_paper: true`
+- Stage 3 and Stage 5 score engine are deterministic Python (scipy, statsmodels, numpy)
+- Stages 0, 1, 2, 4 are agent reasoning tasks — no Python modules needed
+- All Python commands must run from `skills/evidence-evaluator/` directory for imports to resolve

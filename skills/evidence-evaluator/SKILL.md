@@ -26,13 +26,13 @@ Before running the pipeline, ensure Python dependencies are installed:
 python3 -m pip install scipy statsmodels numpy
 ```
 
-Verify the pipeline modules load correctly:
+Verify the pipeline modules load correctly (run from the skill directory):
 
 ```bash
-python3 -c "from pipeline.stage3_math import run_stage3; from pipeline.stage5_report import compute_suggested_score, assemble_report; print('OK')"
+cd ${CLAUDE_SKILL_DIR} && python3 -c "from pipeline.stage3_math import run_stage3; from pipeline.stage5_report import compute_suggested_score, assemble_report; print('OK')"
 ```
 
-If this fails, check that you are running from the `evidence_evaluator/` repo root directory.
+**Important:** All Python code in Stages 3 and 5 must be run from the skill directory (`skills/evidence-evaluator/`) so that `from pipeline.stage3_math import ...` resolves correctly. Use `cd ${CLAUDE_SKILL_DIR} &&` before any `python3` commands, or add the skill directory to `sys.path`.
 
 ## Quick Start
 
