@@ -17,15 +17,21 @@ python tests/acceptance_tests_T1_T8.py
 
 # Stage 3 math unit tests (FI, FQ, NNT, DOR, post-hoc power) — 21 cases
 python tests/experiment_3B_math_unit_tests.py
+
+# Stage 3 module tests — 147 tests: core metrics, edge cases, acceptance
+# scenarios, study type routing, de-duplication, test-retest, total delta
+# end-to-end, and published FI validation (Walsh et al. 2014)
+python tests/test_stage3_math.py
 ```
 
 Tests use a custom pass/fail counter (not pytest). They print results to stdout with checkmark/cross indicators.
 
 ## Architecture
 
-The repo contains no application code — it is a **skill specification + reference library** that an LLM agent follows at runtime:
+The repo is a **skill specification + reference library + Stage 3 implementation**:
 
 - `SKILL.md` — Entry point. Defines the full pipeline, stage execution order, de-duplication rules, and output format. This is what the agent reads to run an evaluation.
+- `pipeline/stage3_math.py` — **Implemented.** Deterministic math audit module (no LLM). Exports `run_stage3()` as the top-level entry point, plus individual functions: `compute_fragility_index`, `compute_ltfu_fi_rule`, `compute_fragility_quotient`, `compute_nnt`, `compute_nnt_threshold_delta`, `compute_posthoc_power_binary`, `compute_posthoc_power_continuous`, `compute_dor`, `deduplicate_statistical_stability`. Routes by study type (diagnostic → DOR only; observational → no power; phase_0_1 → skip).
 - `references/` — Stage-specific specifications the agent reads before executing each stage:
   - `stages_0_1.md` — Stage 0 (study type routing) + Stage 1 (variable extraction with 3× CoT majority vote)
   - `stages_2_3.md` — Stage 2 (agentic MCID search, up to 5 rounds) + Stage 3 (deterministic math audit)

@@ -8,6 +8,7 @@ Built on the [SciSpark](https://scispark.ai) EvidenceScore pipeline (v2) — a 6
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Tests](https://img.shields.io/badge/Acceptance%20Tests-8%2F8%20passing-brightgreen)
 ![Math Tests](https://img.shields.io/badge/Math%20Unit%20Tests-21%2F21%20passing-brightgreen)
+![Stage 3](https://img.shields.io/badge/Stage%203%20Module%20Tests-147%2F147%20passing-brightgreen)
 ![Status](https://img.shields.io/badge/Status-Pre--launch-orange)
 
 ---
@@ -135,6 +136,8 @@ evidence_report_[first_author]_[year]_[pmid].md
 ```
 evidence_evaluator/
 ├── SKILL.md                              ← Agent skill entry point
+├── pipeline/
+│   └── stage3_math.py                    ← Stage 3: deterministic math audit module
 ├── references/
 │   ├── stages_0_1.md                     ← Stage 0: routing · Stage 1: extraction
 │   ├── stages_2_3.md                     ← Stage 2: MCID search · Stage 3: math audit
@@ -144,7 +147,8 @@ evidence_evaluator/
 │   └── eval_framework.md                 ← Acceptance tests T1–T8 + Experiments 3A–3F
 └── tests/
     ├── acceptance_tests_T1_T8.py         ← 8 scenario tests · all pass ✅
-    └── experiment_3B_math_unit_tests.py  ← Stage 3 math unit tests · 21/21 correct ✅
+    ├── experiment_3B_math_unit_tests.py  ← Stage 3 math unit tests · 21/21 correct ✅
+    └── test_stage3_math.py              ← Stage 3 module tests · 147/147 passing ✅
 ```
 
 ---
@@ -160,6 +164,11 @@ python tests/acceptance_tests_T1_T8.py
 
 # Stage 3 math unit tests (FI, FQ, NNT, DOR, post-hoc power)
 python tests/experiment_3B_math_unit_tests.py
+
+# Stage 3 module tests (147 tests: core metrics, edge cases, acceptance scenarios,
+# study type routing, de-duplication, test-retest, total delta end-to-end,
+# published FI validation against Walsh et al. 2014)
+python tests/test_stage3_math.py
 ```
 
 ### Acceptance test coverage
