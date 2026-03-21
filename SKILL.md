@@ -222,7 +222,15 @@ report = assemble_report(
 print(report)
 ```
 
-**Part 2 — Markdown Export (default):** Always export the full report as a `.md` file using the template in `references/stage_5_report.md → Part 5`. Include: all 4 structured sections, the 500–800 word narrative summary (findings only, no verdict), and the optional score with disclaimer. Save to: `evidence_report_[first_author]_[year]_[pmid].md`
+**Part 2 — Markdown Export (default, MUST be comprehensive):** Always export the full report as a `.md` file using the template in `references/stage_5_report.md → Part 5`. The Markdown file is the primary deliverable and must include ALL of the following:
+- All 4 structured sections with full detail
+- **Stage 3 computation traces** — show the FI iteration log (inputs, key iterations, final P), NNT computation (CER, IER, ARR breakdown), LTFU-FI comparison, power computation inputs/output, and DOR if applicable. These traces are what make the report auditable.
+- **Primary and secondary outcomes table** — include all reported endpoints with event counts, rates, and effect sizes (HR/RR/OR with CI)
+- 500–800 word narrative summary (findings only, no verdict)
+- Score with full score path and disclaimer
+- Save to: `evidence_report_[first_author]_[year]_[pmid].md`
+
+**Do NOT abbreviate the Markdown file.** The full computation traces, outcome tables, and per-domain evidence citations are what distinguish this from a summary — they make every finding auditable and citable.
 
 **Part 3 — Chat summary:** After saving the Markdown file, respond to the user with a **brief summary** (not the full report). Include:
 - Paper title and study type
