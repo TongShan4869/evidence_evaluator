@@ -167,10 +167,8 @@ evidence_evaluator/
 │           ├── formulas.md               ← All formulas (FI, FQ, NNT, DOR, power)
 │           └── eval_framework.md         ← Acceptance tests T1–T8 + Experiments 3A–3F
 └── tests/                                ← Development only (not part of skill package)
-    ├── acceptance_tests_T1_T8.py         ← 8 scenario tests · all pass ✅
-    ├── experiment_3B_math_unit_tests.py  ← Stage 3 math unit tests · 21/21 correct ✅
     ├── test_stage3_math.py              ← Stage 3 module tests · 147/147 passing ✅
-    └── test_stage5_report.py            ← Stage 5 module tests · 60/60 passing ✅
+    └── test_stage5_report.py            ← Stage 5 module tests · 70/70 passing ✅
 ```
 
 ---
@@ -181,19 +179,10 @@ evidence_evaluator/
 # Install dependencies
 pip install scipy statsmodels numpy
 
-# Acceptance tests T1–T8 (routing logic, deduction rules, special cases)
-python tests/acceptance_tests_T1_T8.py
-
-# Stage 3 math unit tests (FI, FQ, NNT, DOR, post-hoc power)
-python tests/experiment_3B_math_unit_tests.py
-
-# Stage 3 module tests (147 tests: core metrics, edge cases, acceptance scenarios,
-# study type routing, de-duplication, test-retest, total delta end-to-end,
-# published FI validation against Walsh et al. 2014)
+# Stage 3 module tests (147 tests)
 python tests/test_stage3_math.py
 
-# Stage 5 module tests (60 tests: score rule engine, boundary matrix,
-# de-duplication caps, LTFU floor pierce, report assembly, special cases)
+# Stage 5 module tests (70 tests)
 python tests/test_stage5_report.py
 ```
 

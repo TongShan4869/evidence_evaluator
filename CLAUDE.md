@@ -23,10 +23,8 @@ tests/                              ← Development only (not part of skill pack
 ```bash
 pip install scipy statsmodels numpy
 
-python tests/acceptance_tests_T1_T8.py          # 8/8 pass
-python tests/experiment_3B_math_unit_tests.py    # 21/21 pass
 python tests/test_stage3_math.py                 # 147/147 pass
-python tests/test_stage5_report.py               # 60/60 pass
+python tests/test_stage5_report.py               # 70/70 pass
 ```
 
 Tests use a custom pass/fail counter (not pytest). They print results to stdout.
