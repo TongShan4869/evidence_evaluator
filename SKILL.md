@@ -18,6 +18,22 @@ description: >
 
 A 6-stage agentic pipeline that produces a **structured Evidence Evaluation Report** for any clinical or biomedical research paper. Designed to match the reasoning of a trained EBM reviewer.
 
+## Setup
+
+Before running the pipeline, ensure Python dependencies are installed:
+
+```bash
+python3 -m pip install scipy statsmodels numpy
+```
+
+Verify the pipeline modules load correctly:
+
+```bash
+python3 -c "from pipeline.stage3_math import run_stage3; from pipeline.stage5_report import compute_suggested_score, assemble_report; print('OK')"
+```
+
+If this fails, check that you are running from the `evidence_evaluator/` repo root directory.
+
 ## Quick Start
 
 1. **Receive paper** — PDF upload, pasted abstract/text, DOI, or PMID
@@ -95,6 +111,12 @@ For diagnostic studies: retrieve AUC/Sn/Sp thresholds instead of MCID.
 
 Evaluate: effect vs. MCID, N vs. domain standard, NNT vs. domain threshold.
 
+**Paper retrieval tips:**
+- For DOIs: use CrossRef API (`https://api.crossref.org/works/{doi}`) for metadata.
+- For PMIDs: use PubMed E-utilities (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={pmid}&retmode=xml`) for structured abstracts.
+- For MCID searches: use PubMed E-utilities search (`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmax=10`) then fetch results. Do NOT scrape PubMed HTML pages.
+- If a journal blocks direct access (403), fall back to PubMed/CrossRef for abstract and metadata. Most evaluations can be completed from abstract + methods data alone (Tier 1).
+
 ---
 
 ### Stage 3: Deterministic Math Audit
@@ -103,17 +125,43 @@ Read `references/stages_2_3.md → Stage 3` and `references/formulas.md`.
 **Skip if:** `study_type = phase_0_1`
 **Diagnostic studies:** compute DOR only (skip FI/NNT)
 
-Compute (deterministically):
-1. **Fragility Index (FI)** — iterative Fisher exact test
-2. **LTFU-FI Attrition Rule** — if LTFU > FI → hard −2 (highest priority)
-3. **Fragility Quotient (FQ)** — FI / N_total
-4. **Post-hoc Power** — using MCID as target effect size
-5. **NNT / NNH** — from ARR = CER − IER
-6. **DOR** (diagnostic only)
+**Run via Python module** — do NOT compute these by hand. Call `pipeline/stage3_math.py`:
 
-Show full computation trace with inputs, intermediate values, and interpretation.
+```python
+from pipeline.stage3_math import run_stage3
 
-De-duplication: among {power < 0.8, N < domain standard, NNT > threshold} — apply only the most severe deduction once.
+result = run_stage3(
+    stage1_output={
+        "events_intervention": 386,    # from Stage 1 extraction
+        "n_intervention": 2373,
+        "events_control": 502,
+        "n_control": 2371,
+        "p_value": 0.00001,
+        "ltfu_count": 21,
+        "alpha": 0.05,
+        "effect_size_type": "binary",  # or "SMD", "MD", "continuous"
+    },
+    stage2_output={                     # from Stage 2 (optional)
+        "mcid": 0.05,                  # as ARR for binary outcomes
+        "domain_n": 1000,              # typical N for this domain
+        "domain_nnt_threshold": 50,    # NNT threshold for this domain
+    },
+    study_type="RCT_intervention",     # from Stage 0
+)
+# result contains: metrics (FI, FQ, LTFU rule, NNT, power), total_delta
+```
+
+For **diagnostic studies**, pass `tp`, `tn`, `fp`, `fn` and `initial_grade` instead:
+
+```python
+result = run_stage3(
+    stage1_output={"tp": 80, "tn": 70, "fp": 20, "fn": 30, "initial_grade": 3},
+    study_type="diagnostic",
+)
+# result contains: metrics.dor (with CI, interpretation, delta)
+```
+
+The output includes full computation traces for every metric. Display these in the report.
 
 ---
 
@@ -134,15 +182,49 @@ For Phase 0/I: run only randomization + selective reporting domains of RoB 2.0.
 ### Stage 5: Evidence Evaluation Report Synthesis
 Read `references/stage_5_report.md`.
 
-**Part 1 — Structured Findings (deterministic):** Assemble all stage outputs into 4 sections:
-- Section 1: Study Design & Population
-- Section 2: Statistical Robustness (Stage 3)
-- Section 3: Clinical Benchmarking (Stage 2)
-- Section 4: Bias Risk Assessment (Stage 4)
+**Part 1 — Structured Findings + Score:** Run via Python module:
 
-**Part 2 — Narrative Summary (LLM):** 500–800 words for clinician audience. Cover findings, not verdict. Do not render a final judgment — let the clinician decide.
+```python
+from pipeline.stage5_report import compute_suggested_score, assemble_report
 
-**Part 3 — Optional Score (rule engine):** Apply boundary matrix + de-duplication to generate suggested 1–5 score. Label clearly: *"Suggested score — heuristic, pending expert calibration."*
+# Optional score (rule engine)
+score = compute_suggested_score(
+    initial_grade=5,                    # from Stage 1
+    stage2_deltas={                     # from Stage 2 (optional)
+        "effect_below_mcid": 0,         # -1 if effect < MCID
+        "n_below_domain": 0,            # -1 if N < domain standard
+        "nnt_exceeds": 0,               # -1 if NNT > threshold
+    },
+    stage3_output=stage3_result,        # from run_stage3()
+    stage4_output={                     # from Stage 4
+        "tool": "RoB 2.0",
+        "domains": [
+            {"domain": "randomization", "judgment": "low", "delta": 0},
+            # ... one entry per domain
+        ],
+        "surrogate_endpoint_delta": 0,
+        "heterogeneity_delta": 0,
+        "overall_concern": "low",
+    },
+    study_type="RCT_intervention",
+    excluded=False,
+)
+
+# Structured plain-text report
+report = assemble_report(
+    stage0_output={"study_type": "RCT_intervention", "confidence": 0.99},
+    stage1_output={...},                # full Stage 1 output
+    stage2_output={...},                # full Stage 2 output
+    stage3_output=stage3_result,
+    stage4_output={...},
+    score_result=score,
+)
+print(report)
+```
+
+**Part 2 — Narrative Summary (LLM):** Write 500–800 words for clinician audience. Cover findings, not verdict. Do not render a final judgment — let the clinician decide.
+
+**Part 3 — Optional Markdown Export:** If user requests `output_format: markdown`, render using the template in `references/stage_5_report.md → Part 5`.
 
 ---
 
