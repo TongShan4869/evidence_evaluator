@@ -35,11 +35,11 @@
 
 | Metric | Value | Threshold | Flag |
 |---|---|---|---|
-| Fragility Index (FI) | 67 | > 10 = robust | 🟢 robust |
-| Fragility Quotient (FQ) | 0.0038 | < 0.01 | 🔴 below threshold |
-| Post-hoc Power | 99.4% | >= 80% | 🟢 adequate |
-| LTFU count | 25 | Must be <= FI (67) | 🟢 safe |
-| NNT | 81.7 | Domain threshold: 200 | 🟢 favorable |
+| Fragility Index (FI) | 67 | > 10 = robust | robust |
+| Fragility Quotient (FQ) | 0.0038 | < 0.01 | below threshold |
+| Post-hoc Power | 85.5% | >= 80% | adequate |
+| LTFU count | 25 | Must be <= FI (67) | safe |
+| NNT | 81.7 | Domain threshold: 200 | favorable |
 
 **Stage 3 computation trace:**
 
@@ -71,9 +71,9 @@ NNT:
   Delta: 0
 
 Post-hoc Power:
-  MCID = 0.01 (ARR); p_control = 0.0282; p_intervention_at_mcid = 0.0182
-  Cohen's h = 0.0668
-  Power = 99.37% (>= 80%): adequately powered at MCID
+  MCID = 0.007 (ARR); p_control = 0.0282; p_intervention_at_mcid = 0.0282 - 0.007 = 0.0212
+  Cohen's h = 0.0452
+  Power = 85.46% (>= 80%): adequately powered at MCID
   Delta: 0
 ```
 
@@ -83,20 +83,30 @@ Post-hoc Power:
 
 | Field | Value |
 |---|---|
-| MCID | 0.01 ARR |
-| Source | AHA/ESC cardiovascular prevention guidelines — NNT threshold tables |
+| MCID | 0.007 ARR (0.7%) |
+| Source | Tier 3 — powering convention from the landmark trial itself (HR <= 0.75) |
 | Source tier | Tier 3 |
 | Observed effect | ARR = 0.0122 (HR 0.56, 95% CI 0.46–0.69) |
-| Effect vs. MCID | 🟢 exceeds |
+| Effect vs. MCID | exceeds (observed 1.22% vs. threshold 0.7%) |
 
-**MCID rationale:** For cardiovascular primary prevention in low-risk populations, the AHA/ACC/ESC guidelines establish acceptable NNT ranges of 50–200, corresponding to an ARR of 0.5–2.0%. An ARR of 1.0% (NNT = 100) was used as the MCID benchmark. The observed ARR of 1.22% exceeds this threshold, and the NNT of 81.7 falls within the acceptable range.
+**MCID derivation:**
+
+No Tier 1 (anchor-based patient-reported) or Tier 2 (established published MCID) threshold exists for cardiovascular primary prevention composite endpoints. Using Tier 3 (powering convention from landmark trial):
+
+1. **Powering convention:** JUPITER was powered to detect HR <= 0.75 (25% relative risk reduction). This aligns with AHA/ESC primary prevention guidelines, which use HR <= 0.75–0.80 as the threshold for clinical significance.
+2. **Per rule 5:** use the powering convention from the landmark trial itself, so HR <= 0.75.
+3. **CER from Stage 1:** events_control = 251, n_control = 8,901 → CER = 251/8901 = 0.0282.
+4. **Convert HR threshold to ARR:** ARR = CER x (1 - HR) = 0.0282 x (1 - 0.75) = 0.0282 x 0.25 = 0.0071.
+5. **MCID = ARR 0.007 (0.7%).**
+6. **Cross-check with HR <= 0.80:** ARR = 0.0282 x 0.20 = 0.0056 (0.6%). The selected threshold (0.7%) is conservative relative to the alternative.
+7. **Observed ARR (1.22%) exceeds MCID (0.7%) by a factor of 1.74.** The trial result is clinically meaningful.
 
 ---
 
 ## Section 4 — Bias Risk Assessment
 
 **Tool:** RoB 2.0
-**Overall concern:** 🟡 some_concerns
+**Overall concern:** some_concerns
 
 ### Per-Domain Findings
 
@@ -113,23 +123,21 @@ Post-hoc Power:
 | Check | Finding | Delta |
 |---|---|---|
 | Surrogate endpoint | no — composite of hard clinical events | 0 |
-| Meta-analysis I² | n/a | 0 |
+| Meta-analysis I-squared | n/a | 0 |
 
 ---
 
 ## Narrative Summary
 
-The JUPITER trial (Justification for the Use of Statins in Prevention: an Intervention Trial Evaluating Rosuvastatin) was a large, multinational, double-blind, randomized, placebo-controlled Phase III trial enrolling 17,802 apparently healthy men and women with low LDL cholesterol but elevated high-sensitivity C-reactive protein. Participants were randomized 1:1 to rosuvastatin 20 mg daily or placebo, with the primary endpoint being a composite of first major cardiovascular event.
+The JUPITER trial (Justification for the Use of Statins in Prevention: an Intervention Trial Evaluating Rosuvastatin) was a large, multinational, double-blind, randomized, placebo-controlled Phase III trial enrolling 17,802 apparently healthy men and women with low LDL cholesterol but elevated high-sensitivity C-reactive protein. Participants were randomized 1:1 to rosuvastatin 20 mg daily or placebo, with the primary endpoint being a composite of first major cardiovascular event (myocardial infarction, stroke, arterial revascularization, hospitalization for unstable angina, or cardiovascular death). The trial was stopped early by an independent Data Safety Monitoring Board after a median follow-up of 1.9 years out of a planned 5 years, upon crossing a pre-specified Haybittle-Peto efficacy boundary.
 
-The statistical robustness of this trial is notable. The Fragility Index of 67 indicates that 67 outcome events would need to change classification before the primary result would lose significance — a highly robust finding that places JUPITER among the most statistically resilient cardiovascular prevention trials. The LTFU-FI attrition check confirms safety: only approximately 25 patients had unknown primary endpoint status, well below the FI of 67. Post-hoc power exceeded 99% at the pre-specified MCID, confirming the trial was substantially overpowered for the clinically meaningful effect size. However, the Fragility Quotient (0.0038) falls below the 0.01 threshold, reflecting that even an FI of 67 represents a small fraction of the 17,802-patient sample.
+The statistical robustness of this trial is notable. The Fragility Index of 67 indicates that 67 outcome events in the intervention group would need to change classification before the primary result would lose statistical significance at the two-sided alpha = 0.05 level. This places JUPITER among the most statistically resilient cardiovascular prevention trials. The LTFU-FI attrition check confirms that missing data does not threaten the primary finding: only approximately 25 patients had unknown primary endpoint status, well below the FI of 67. However, the Fragility Quotient (FQ = 67/17,802 = 0.0038) falls below the 0.01 threshold, reflecting that even an FI of 67 represents a small fraction of the total sample. The FI bonus (+0.5) and FQ penalty (-0.5) cancel to a net zero adjustment. Post-hoc power was 85.5% at the updated MCID of 0.7% ARR, confirming the trial was adequately powered to detect a clinically meaningful effect at the Tier 3 threshold.
 
-From a clinical benchmarking perspective, the observed absolute risk reduction of 1.22% (HR 0.56, 95% CI 0.46–0.69, P < 0.00001) exceeds the MCID benchmark of 1.0% ARR derived from AHA/ESC guideline NNT thresholds for cardiovascular primary prevention. The NNT of 81.7 falls well within the acceptable 50–200 range for low-risk primary prevention populations, suggesting clinically meaningful benefit at a population level.
+A key update in this re-evaluation concerns the MCID derivation. No Tier 1 or Tier 2 MCID exists for cardiovascular primary prevention composite endpoints. The Tier 3 derivation uses the powering convention from JUPITER itself: HR <= 0.75, representing a 25% relative risk reduction. Converting to an absolute scale using the control event rate (CER = 251/8,901 = 0.0282), the formula ARR = CER x (1 - HR) yields ARR = 0.0282 x 0.25 = 0.0071, rounded to MCID = 0.007 (0.7%). This is more stringent than the prior MCID of 1.0% used in earlier versions of this report, and it better reflects the powering assumption of the trial and the AHA/ESC guideline range. The observed ARR of 1.22% exceeds this MCID by a factor of 1.74, and the NNT of 81.7 falls well within the domain threshold of 200 for low-risk primary prevention populations. Together, these metrics indicate clinically meaningful benefit at a population level.
 
-The bias risk assessment using RoB 2.0 identified low risk across four of five domains. The single domain rated "some concerns" is selection of reported results, driven by the trial's early termination. The independent DSMB stopped JUPITER after a median follow-up of only 1.9 years out of a planned 5 years. While the stopping followed a pre-specified Haybittle-Peto boundary and the primary endpoint was registered, early stopping is known to overestimate treatment effects — a widely discussed limitation in the subsequent literature. The magnitude of this potential overestimation is uncertain but should be weighed when interpreting the hazard ratio of 0.56.
+The bias risk assessment using RoB 2.0 identified low risk across four of five domains. The single domain rated "some concerns" is selection of reported results, driven by the trial's early termination. While the stopping followed a pre-specified Haybittle-Peto boundary and the primary endpoint was registered (NCT00239681), early stopping is known to overestimate treatment effects. The magnitude of this potential overestimation is uncertain but should be weighed when interpreting the hazard ratio of 0.56. No deductions were applied because the stopping rule was pre-specified and the primary endpoint was not changed, meeting the threshold for "some concerns" rather than "high risk."
 
-Key strengths of the trial include its large sample size, rigorous double-blind design, use of hard clinical endpoints adjudicated by an independent blinded committee, near-complete follow-up, and highly significant results with a very low P-value. Key limitations include early stopping (with potential effect overestimation), the highly selected population (elevated CRP as an enrollment criterion limits generalizability), and the relatively short follow-up that leaves long-term benefit-risk balance uncertain. The trial also identified a higher incidence of physician-reported diabetes in the rosuvastatin group, a finding that requires consideration in benefit-risk discussions.
-
-Clinicians interpreting this evidence should weigh the strong statistical robustness and favorable NNT against the uncertainty introduced by early stopping and the selected population. The results provide robust evidence for the efficacy of rosuvastatin in reducing cardiovascular events in this specific population, while the generalizability to broader primary prevention populations and the long-term safety profile merit ongoing evaluation.
+Key strengths of the trial include its large sample size, rigorous double-blind design, use of hard clinical endpoints adjudicated by an independent blinded committee, near-complete follow-up (vital status known for >97%), and highly significant results (P < 0.00001). Key limitations include early stopping with potential effect overestimation, the highly selected population (elevated CRP as an enrollment criterion limits generalizability to broader primary prevention), the relatively short follow-up that leaves long-term benefit-risk balance uncertain, and a higher incidence of physician-reported diabetes in the rosuvastatin group. Clinicians interpreting this evidence should weigh the strong statistical robustness and favorable NNT against the uncertainty introduced by early stopping, the selected population, and the updated but still favorable MCID comparison.
 
 ---
 
@@ -137,7 +145,7 @@ Clinicians interpreting this evidence should weigh the strong statistical robust
 
 > This score is generated by a deterministic rule engine. Design choices are pending expert calibration. Do not use as a validated clinical instrument.
 
-**Score: 5 ★★★★★ — Excellent**
+**Score: 5 -- Excellent**
 
 ### Score Path
 
@@ -147,8 +155,8 @@ Clinicians interpreting this evidence should weigh the strong statistical robust
 | Stage 2 | Effect exceeds MCID; N > domain standard; NNT within threshold | 0 |
 | Stage 3 | FI: +0.5 (robust); FQ: -0.5 (below threshold); net zero | 0 |
 | Stage 4 | All RoB 2.0 domains low or some_concerns (no deduction-level findings) | 0 |
-| De-duplication | No overlapping deductions to resolve | — |
-| Boundary enforcement | None required (raw score = 5, within [3, 5] range) | — |
+| De-duplication | No overlapping deductions to resolve | -- |
+| Boundary enforcement | None required (raw score = 5, within [3, 5] range) | -- |
 | **Final score** | | **5** |
 
 **Score 5 prerequisites check:**
@@ -156,7 +164,7 @@ Clinicians interpreting this evidence should weigh the strong statistical robust
 - FI > 10: yes (67)
 - FI > LTFU: yes (67 > 25)
 - P < 0.001: yes (P < 0.00001)
-- Power >= 0.80: yes (99.4%)
+- Power >= 0.80: yes (85.5%)
 - Low bias (no high/critical domains): yes
 - Hard endpoints (not surrogate): yes
 
