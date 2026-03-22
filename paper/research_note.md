@@ -126,3 +126,63 @@ flowchart TD
 What distinguishes an executable skill from a paper describing a method is the degree to which its specification is machine-actionable. Each stage in Evidence Evaluator is backed by a structured reference document that the agent reads before execution, containing typed input/output contracts, code invocation examples, and explicit routing guards. Deterministic stages expose Python functions with documented signatures (`run_stage3()`, `compute_suggested_score()`, `assemble_report()`), while LLM stages provide few-shot templates and majority-vote protocols. Setup verification commands allow the agent to confirm that dependencies are installed before the pipeline begins.
 
 The pipeline's primary output is the structured Evidence Evaluation Report, not a score. The optional 1--5 heuristic score is computed by a deterministic rule engine that applies grade adjustments from Stages 2--4, enforces de-duplication rules (e.g., among power, sample size, and NNT penalties, only the most severe applies), and respects hard constraints (LTFU $>$ FI triggers an unconditional $-2$). This score is explicitly labeled as pending expert calibration and is never presented as a validated quality metric.
+
+---
+
+## 3 Evaluation Framework
+
+If executable EBM is to be trustworthy, the community needs shared benchmarks that go beyond "does it run" to "does it produce findings a trained reviewer would agree with." We propose a two-tier evaluation standard: acceptance tests that verify correct routing and rule-firing across the full study-type space, and validation experiments that measure agreement with human expert judgments on real papers.
+
+### Tier 1 — Acceptance Tests (T1--T8)
+
+Eight scenario-based tests cover the pipeline's complete routing space, each designed to exercise a distinct branch or hard rule:
+
+- **T1:** Grade 5 RCT with $FI > 10$, low bias across all domains -- robust flags fire, score reaches 5.
+- **T2:** Large RCT where LTFU $>$ FI -- the hard $-2$ rule fires unconditionally, dropping the score to 3.
+- **T3:** Phase 0/I study -- Stages 2 and 3 are skipped entirely, score locked to the 1--2 range.
+- **T4:** Diagnostic study with $AUC < 0.70$ -- QUADAS-2 is selected over RoB 2.0, DOR is computed.
+- **T5:** Retracted paper -- exclusion flag is set, all report sections suppressed.
+- **T6:** Preventive study where NNT exceeds the domain threshold -- $-1$ grade adjustment applied.
+- **T7:** Observational study with $RR > 2.0$ -- GRADE upgrade fires, grade rises to 4.
+- **T8:** MCID search exhausts all three tiers -- Cohen's $d$ Tier 4 proxy is used with warning.
+
+These acceptance tests are conceptually distinct from the 217 unit tests that validate the deterministic components of Stages 3 and 5. The unit tests confirm that individual functions (`compute_fragility_index`, `compute_nnt`, `compute_suggested_score`) produce correct outputs for known inputs. T1--T8 verify that the *assembled pipeline* routes correctly, fires the right rules in combination, and produces coherent end-to-end reports.
+
+### Tier 2 — Validation Experiments (3A--3F)
+
+Six experiments define concrete, reproducible targets that any implementation of executable EBM review should meet:
+
+- **3A — Extraction accuracy:** $F_1 \geq 0.85$ for PICO elements and statistical parameters on structured abstracts.
+- **3B — Math correctness:** 100% exact match on deterministic computations, verified against synthetic contingency tables and published Fragility Index cases.
+- **3C — Study type classification:** Macro $F_1 \geq 0.85$ against PubMed MeSH-derived ground truth across all six study types.
+- **3D — MCID retrieval quality:** Tier 1 or Tier 2 MCID source retrieved in $\geq 70\%$ of cases where a published MCID exists.
+- **3E — Test-retest reliability:** Stage 3 output is 100% reproducible (deterministic); Stages 1 and 4 (LLM-driven) achieve $\geq 90\%$ agreement across repeated runs.
+- **3F — Bias judgment agreement:** Cohen's $\kappa \geq 0.60$ for domain-level RoB 2.0 judgments versus published Cochrane assessments.
+
+We frame these targets as a proposed community standard. They are deliberately concrete -- each experiment specifies a metric, a threshold, and a ground-truth source -- so that other teams building executable EBM tools can adopt and extend them without ambiguity.
+
+---
+
+## 4 Pilot Results
+
+We ran Evidence Evaluator end-to-end on five papers, one per major study type, to demonstrate full pipeline coverage and examine the behavior of routing logic, deterministic computation, and bias assessment across diverse designs.
+
+**Table 2 — Pilot Run Results**
+
+| Paper | Type | Key Metrics | Score | Notable Findings |
+|---|---|---|---|---|
+| DAPA-HF (McMurray 2019) | RCT | FI=62, NNT=20.4, Power=40.4% | 4/5 | FI robust; power blocks Score 5 prerequisite |
+| FIT meta-analysis (Lee 2014) | Diagnostic | DOR=57.42 (CI: 32.25--102.24) | 4/5 | High discrimination; heterogeneity $-1$ via QUADAS-2 |
+| JUPITER (Ridker 2008) | Preventive | FI=67, NNT=81.7, Power=99.4% | 5/5 | All Score 5 prerequisites met; early stopping noted |
+| Doll & Hill 1950 | Observational | FI=18, OR=14.04, GRADE +1 | 4/5 | GRADE upgrade capped +1; ceiling at Grade 4 |
+| Topalian 2012 (anti-PD-1) | Phase 0/I | Stages 2+3 skipped | 2/5 | Score locked 1--2; Phase 0/I disclaimer shown |
+
+**DAPA-HF.** The Fragility Index of 62 confirms exceptional statistical robustness -- more than 60 patient events would need to change to nullify the primary result. The power flag (40.4% at MCID) is a conservative artifact: the trial's observed absolute risk reduction of 4.9% is approximately $2.5\times$ the MCID target, so the study detected a real and clinically meaningful effect despite appearing underpowered relative to the minimum difference. All five RoB 2.0 domains were rated low risk.
+
+**FIT meta-analysis.** A Diagnostic Odds Ratio of 57.42 (95% CI: 32.25--102.24) indicates strong discrimination for fecal immunochemical testing. The sole deduction arose from heterogeneity across included studies (sensitivity range 0.70--0.89), which triggered a $-1$ adjustment. QUADAS-2 was correctly selected over RoB 2.0, confirming the diagnostic routing path.
+
+**JUPITER.** This trial met every Score 5 prerequisite: $FI = 67$, power $= 99.4\%$, all bias domains rated low, and hard clinical endpoints. The NNT of 81.7 falls within the 200 threshold for primary cardiovascular prevention. Early stopping was conducted per pre-specified Data Safety Monitoring Board boundaries and did not trigger a deduction.
+
+**Doll & Hill.** The GRADE upgrade was triggered by three factors: $OR = 14.04$ (large effect size), a dose-response gradient, and plausible confounders favoring the null. The pipeline correctly enforced the cap of $+1$ maximum upgrade and the Grade 3 ceiling of 4 for observational designs. $FI = 18$ indicates robustness despite the modest sample size by modern standards.
+
+**Topalian anti-PD-1.** The pipeline correctly classified this as a phase 0/I study, skipped Stages 2--3, locked the score to the 1--2 range, and displayed the required disclaimer. A limited RoB 2.0 assessment (2 domains) was appropriately applied, reflecting the inherent design constraints of early-phase oncology trials.
